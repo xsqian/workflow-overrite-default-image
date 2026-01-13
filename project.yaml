@@ -1,53 +1,41 @@
+kind: project
+status:
+  state: online
+metadata:
+  name: workflow-override
+  created: '2026-01-11T19:20:18.833000'
 spec:
+  owner: xingsheng
+  load_source_on_run: false
   conda: ''
   desired_state: online
-  functions:
-  - url: db://workflow-override-admin/data-prep
-    name: data-prep
-    kind: job
-  - url: db://workflow-override-admin/structured-data-generator
-    name: structured-data-generator
-    kind: job
-  - url: db://workflow-override-admin/test-image
-    name: test-image
-    kind: job
-  default_image: .mlrun-project-image-workflow-override-admin
   build:
+    source_code_target_dir: /home/mlrun_code/
+    image: .mlrun-project-image-workflow-override
     requirements:
     - langchain==0.2.17
     - openai==1.58.1
     - langchain_community==0.2.19
-    image: .mlrun-project-image-workflow-override-admin
-    base_image: mlrun/mlrun
+    commands:
+    - pip install mlrun langchain==0.2.17 openai==1.58.1 langchain_community==0.2.19
+    base_image: mlrun/mlrun-kfp
+  functions:
+  - url: ./src/test-image.py
+    name: test-image
+    kind: job
+    image: .mlrun-project-image-workflow-override
+  - url: hub://structured_data_generator
+    name: structured-data-generator
+    kind: job
+    image: .mlrun-project-image-workflow-override
+  origin_url: git://github.com/xsqian/workflow-overrite-default-image.git#refs/heads/main
+  params:
+    build_image: false
+    source: git://github.com/xsqian/workflow-overrite-default-image.git#main
+    default_image: .mlrun-project-image-workflow-override
+  default_image: .mlrun-project-image-workflow-override
   workflows:
-  - name: main
-    code: "\nfrom kfp import dsl\nimport mlrun\n\n# Create a Kubeflow Pipelines pipeline\n\
-      @dsl.pipeline(name=\"breast-cancer-demo\")\ndef pipeline(model_name=\"cancer-classifier\"\
-      ):\n    \n    project = mlrun.get_current_project()\n    \n    # Run the ingestion\
-      \ function with the new image and params\n    ingest = mlrun.run_function(\n\
-      \        \"data-prep\",\n        name=\"get-data\",\n        returns=[\"dataset\"\
-      , \"label_column\"],\n    )\n\n    client_data_generator_function = project.get_function(\n\
-      \        \"structured_data_generator\"\n    )\n    client_data_run = project.run_function(\n\
-      \        client_data_generator_function,\n        handler=\"generate_data\"\
-      ,\n        name=\"client-data-generator\",\n        params={\n            \"\
-      amount\": 2,\n            \"model_name\": \"gpt-4\",\n            \"language\"\
-      : \"en\",\n            \"fields\": [\n                f\"first_name: in english,\
-      \ no special characters\",\n                f\"last_name: in english, no special\
-      \ characters\",\n                \"phone_number\",\n                \"email\"\
-      ,\n                \"client_id: no leading zeros, at least 8 digits long, only\
-      \ numbers, this is a primay key field for the database, avoid duplicates as\
-      \ much as possible\",\n                \"client_city: Enter city, state in the\
-      \ US (e.g., Austin, TX), Not only Texas\",\n                \"latitude: That\
-      \ correspond to the city\",\n                \"longitude: That correspond to\
-      \ the city\",\n            ],\n        },\n        returns=[\"clients: file\"\
-      ],\n    )\n"
-  - name: test-image-in-workflow
-    code: "\nfrom kfp import dsl\nimport mlrun\n\n# Create a Kubeflow Pipelines pipeline\n\
-      @dsl.pipeline(name=\"test-image-in-workflow\")\ndef pipeline():\n    \n    project\
-      \ = mlrun.get_current_project()\n    \n    # Run the ingestion function \n \
-      \   f = project.get_function(\"test-image\")\n    f_run = project.run_function(f)\n"
-  source: db://workflow-override-admin
-  load_source_on_run: false
-metadata:
-  name: workflow-override-admin
-kind: project
+  - image: .mlrun-project-image-workflow-override
+    name: test-image-in-workflow
+    path: src/workflow-image.py
+  source: git://github.com/xsqian/workflow-overrite-default-image.git#main
